@@ -1,5 +1,5 @@
 import json
-
+import os
 from google import genai
 from google.genai import types
 from dotenv import load_dotenv
@@ -17,8 +17,9 @@ from memory import (
 
 load_dotenv()
 
-client = genai.Client()
-
+client = genai.Client(
+    api_key=os.getenv("GEMINI_API_KEY")
+)
 
 # ==========================================
 # TOOL FUNCTIONS
@@ -304,9 +305,10 @@ AGENT BEHAVIOR:
 
 - Do not reveal private chain-of-thought.
 
-The current memory is already available above.
-Do not call get_memory unless you specifically
-need to retrieve it again.
+If the user asks what you remember about their
+preferences or listening history, call get_memory.
+After receiving the tool result, explain the
+stored information in a natural response.
 """
 
     # --------------------------------------
@@ -338,7 +340,7 @@ need to retrieve it again.
         )
 
         response = client.models.generate_content(
-            model="gemini-2.5-flash",
+            model="gemini-3.5-flash-lite",
             contents=contents,
             config=types.GenerateContentConfig(
                 system_instruction=system_instruction,
@@ -426,11 +428,11 @@ need to retrieve it again.
             )
 
         contents.append(
-            types.Content(
-                role="tool",
-                parts=function_response_parts
-            )
-        )
+    types.Content(
+        role="user",
+        parts=function_response_parts
+    )
+)
 
     # --------------------------------------
     # MAX ITERATIONS REACHED
