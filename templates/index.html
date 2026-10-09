@@ -1,0 +1,177 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Muse | Music Discovery</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <aside class="sidebar">
+        <a class="brand" href="/">♫ <span>Muse</span></a>
+        <p class="tagline">Your personal music discovery assistant</p>
+
+        <nav>
+            <button class="nav-item active" data-message="Hello Muse!">◉ <span>Chat</span></button>
+            <button class="nav-item" data-message="What music preferences do you remember about me?">♡ <span>Your Preferences</span></button>
+            <button class="nav-item" data-message="Recommend a song based on my saved preferences.">♫ <span>Discover Music</span></button>
+        </nav>
+
+        <div class="sidebar-quote">
+            <span class="quote-mark">〜</span>
+            <p>Good music finds you when you need it most.</p>
+            <small>— Muse</small>
+        </div>
+        <div class="sidebar-footer">MADE FOR YOUR MOOD ✦</div>
+    </aside>
+
+    <main class="main">
+        <header class="topbar">
+            <div>
+                <span class="eyebrow">YOUR PERSONAL MUSIC SPACE</span>
+                <h2>Find your sound <span>✦</span></h2>
+            </div>
+            <div class="status"><span class="status-dot"></span> Muse is ready</div>
+        </header>
+
+        <section class="welcome">
+            <div class="welcome-icon">♫</div>
+            <div>
+                <h1>Hey there, music lover.</h1>
+                <p>Tell me how you feel. Let's find a song that understands.</p>
+            </div>
+        </section>
+
+        <section id="chat" class="chat">
+            <div class="message muse-message">
+                <div class="avatar">♫</div>
+                <div class="bubble">
+                    <span class="message-label">MUSE · YOUR MUSIC COMPANION</span>
+                    <p>Hi! I'm Muse. 🎧</p>
+                    <p>Ask me for recommendations, explore a mood, or tell me what music you love. I'll remember your preferences for next time.</p>
+                    <div class="suggestions">
+                        <button data-prompt="Recommend a melancholic song with meaningful lyrics.">☾ Melancholic songs</button>
+                        <button data-prompt="Recommend a song for me.">♫ Surprise me</button>
+                        <button data-prompt="What music preferences do you remember about me?">♡ My preferences</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <div class="composer-wrap">
+            <div class="composer">
+                <span class="composer-sparkle">✦</span>
+                <textarea id="message" rows="1" placeholder="Tell Muse what's on your mind..." aria-label="Message Muse"></textarea>
+                <button id="send" class="send-button" aria-label="Send message">➤</button>
+            </div>
+            <p class="hint">ENTER TO SEND <span>·</span> SHIFT + ENTER FOR A NEW LINE</p>
+        </div>
+        <footer>Music is personal. Your preferences stay in your local Muse memory.</footer>
+    </main>
+
+    <script>
+        const chat = document.getElementById("chat");
+        const input = document.getElementById("message");
+        const sendButton = document.getElementById("send");
+        
+        
+function formatMessage(text) {
+    const escapeHTML = value => value.replace(/[&<>"']/g, char => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#39;"
+    })[char]);
+
+    let safe = escapeHTML(text);
+
+    safe = safe.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+    safe = safe.replace(/\*(.+?)\*/g, "<em>$1</em>");
+
+    return safe;
+}
+
+        function addMessage(text, type) {
+            const row = document.createElement("div");
+            row.className = "message " + (type === "user" ? "user-message" : "muse-message");
+
+            if (type !== "user") {
+                const avatar = document.createElement("div");
+                avatar.className = "avatar";
+                avatar.textContent = "♫";
+                row.appendChild(avatar);
+            }
+
+            const bubble = document.createElement("div");
+            bubble.className = "bubble";
+            const paragraph = document.createElement("p");
+            paragraph.innerHTML = formatMessage(text);
+            bubble.appendChild(paragraph);
+            row.appendChild(bubble);
+            chat.appendChild(row);
+            chat.scrollTop = chat.scrollHeight;
+            return row;
+        }
+
+        async function sendMessage(text = input.value.trim()) {
+            if (!text || sendButton.disabled) return;
+
+            addMessage(text, "user");
+            input.value = "";
+            input.style.height = "auto";
+            sendButton.disabled = true;
+
+            const loading = addMessage("Finding your sound...", "muse");
+            loading.classList.add("loading-message");
+
+            try {
+                const response = await fetch("/chat", {
+                    method: "POST",
+                    headers: {"Content-Type": "application/json"},
+                    body: JSON.stringify({message: text})
+                });
+
+                const data = await response.json();
+                loading.querySelector(".bubble p").textContent =
+                    data.reply || "Muse couldn't find a response.";
+            } catch (error) {
+                loading.querySelector(".bubble p").textContent =
+                    "I couldn't connect to Muse. Check that the Python server is running, then try again.";
+            } finally {
+                loading.classList.remove("loading-message");
+                sendButton.disabled = false;
+                input.focus();
+                chat.scrollTop = chat.scrollHeight;
+            }
+        }
+
+        sendButton.addEventListener("click", () => sendMessage());
+
+        input.addEventListener("keydown", event => {
+            if (event.key === "Enter" && !event.shiftKey) {
+                event.preventDefault();
+                sendMessage();
+            }
+        });
+
+        input.addEventListener("input", () => {
+            input.style.height = "auto";
+            input.style.height = Math.min(input.scrollHeight, 140) + "px";
+        });
+
+        document.querySelectorAll("[data-prompt]").forEach(button => {
+            button.addEventListener("click", () => sendMessage(button.dataset.prompt));
+        });
+
+        document.querySelectorAll(".nav-item").forEach(button => {
+            button.addEventListener("click", () => {
+                document.querySelectorAll(".nav-item").forEach(item => item.classList.remove("active"));
+                button.classList.add("active");
+                sendMessage(button.dataset.message);
+            });
+        });
+    </script>
+</body>
+</html>
